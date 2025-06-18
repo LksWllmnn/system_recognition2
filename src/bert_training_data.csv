@@ -1,0 +1,8 @@
+text,label
+Vibrationen leicht erhöht – Überprüfung empfohlen,kein_fokus
+Kurzzeitige Stromschwankung registriert,kein_fokus
+Plötzlicher Systemausfall – Notbetrieb aktiviert,kein_fokus
+Unregelmäßige Beschleunigung beim Startvorgang,kein_fokus
+Tür schließt verzögert nach Gewichtserkennung,fahrstuhl_kabine
+Antrieb benötigt längere Initialisierung,fahrstuhl_getriebe
+Kein Zugang zur Steuerungseinheit – manuelle Übersteuerung notwendig,kein_fokus

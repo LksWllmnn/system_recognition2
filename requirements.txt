@@ -1,0 +1,260 @@
+# requirements.txt
+sentence-transformers==2.2.2
+scikit-learn==1.3.0
+# numpy==1.24.3
+pandas==2.0.3
+transformers==4.33.2
+# torch==2.0.1
+
+# setup.sh
+#!/bin/bash
+
+echo "🚀 Setup Multi-Classifier Event Processing System"
+
+# Python Virtual Environment erstellen
+echo "📦 Erstelle Python Virtual Environment..."
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# venv\Scripts\activate  # Windows
+
+# Dependencies installieren
+echo "📚 Installiere Python Dependencies..."
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# Verzeichnisstruktur erstellen
+echo "📁 Erstelle Verzeichnisstruktur..."
+mkdir -p src
+mkdir -p data
+mkdir -p logs
+
+# Python-Dateien kopieren
+echo "📝 Kopiere Python-Dateien..."
+cat > src/multi_classifier_service.py << 'EOF'
+import sys
+import json
+import signal
+from multi_classifier import MultiClassifierSystem, Event
+
+# Globales System
+system = None
+
+def signal_handler(sig, frame):
+    print("Python Multi-Classifier shutting down...", file=sys.stderr)
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
+try:
+    # System initialisieren
+    system = MultiClassifierSystem()
+    
+    # Bereit-Signal senden
+    print("READY")
+    sys.stdout.flush()
+    
+    # Endlos-Schleife: Auf Events warten
+    while True:
+        line = sys.stdin.readline().strip()
+        
+        if not line:
+            break
+        
+        try:
+            # Event-Daten parsen
+            event_data = json.loads(line)
+            
+            # Event-Objekt erstellen
+            event = Event(
+                id=event_data['id'],
+                timestamp=event_data['timestamp'],
+                channel=event_data['channel'],
+                severity=event_data['severity'],
+                raw_text=event_data['rawText'],
+                source=event_data.get('source')
+            )
+            
+            # Event verarbeiten
+            result = system.process_event(event)
+            
+            # Ergebnis als JSON zurücksenden
+            result_dict = {
+                'event': {
+                    'id': result.event.id,
+                    'timestamp': result.event.timestamp,
+                    'channel': result.event.channel,
+                    'severity': result.event.severity,
+                    'rawText': result.event.raw_text,
+                    'source': result.event.source
+                },
+                'embedding_result': {
+                    'category': result.embedding_result.category,
+                    'confidence': result.embedding_result.confidence,
+                    'classifier_type': result.embedding_result.classifier_type
+                },
+                'llm_result': {
+                    'category': result.llm_result.category,
+                    'confidence': result.llm_result.confidence,
+                    'classifier_type': result.llm_result.classifier_type
+                },
+                'rule_result': {
+                    'category': result.rule_result.category,
+                    'confidence': result.rule_result.confidence,
+                    'classifier_type': result.rule_result.classifier_type
+                },
+                'consensus': result.consensus,
+                'certainty_level': result.certainty_level,
+                'should_save_for_training': result.should_save_for_training
+            }
+            
+            print(json.dumps(result_dict))
+            sys.stdout.flush()
+            
+        except json.JSONDecodeError as e:
+            print(f"ERROR: Invalid JSON: {e}", file=sys.stderr)
+            print("ERROR: Invalid JSON")
+            sys.stdout.flush()
+        except Exception as e:
+            print(f"ERROR: Processing failed: {e}", file=sys.stderr)
+            print("ERROR: Processing failed")
+            sys.stdout.flush()
+
+except KeyboardInterrupt:
+    pass
+except EOFError:
+    pass
+except Exception as e:
+    print(f"ERROR: System initialization failed: {e}", file=sys.stderr)
+
+print("Python Multi-Classifier ending", file=sys.stderr)
+EOF
+
+# TypeScript Dependencies installieren
+echo "📦 Installiere TypeScript Dependencies..."
+npm init -y
+npm install --save-dev typescript @types/node ts-node
+npm install
+
+# TypeScript Konfiguration
+echo "⚙️ Erstelle TypeScript Konfiguration..."
+cat > tsconfig.json << 'EOF'
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+EOF
+
+# Package.json Scripts hinzufügen
+echo "📜 Aktualisiere package.json Scripts..."
+cat > package.json << 'EOF'
+{
+  "name": "multi-classifier-event-system",
+  "version": "1.0.0",
+  "description": "Event Processing System with Multi-Classifier",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "ts-node src/test.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.5.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6"
+  }
+}
+EOF
+
+echo "✅ Setup abgeschlossen!"
+echo ""
+echo "🚀 Um das System zu starten:"
+echo "1. Aktiviere das Python Virtual Environment:"
+echo "   source venv/bin/activate  # Linux/Mac"
+echo "   # oder venv\\Scripts\\activate  # Windows"
+echo ""
+echo "2. Starte das TypeScript System:"
+echo "   npm run dev"
+echo ""
+echo "📁 Dateien wurden erstellt in:"
+echo "   src/               - TypeScript Quellcode"
+echo "   src/multi_classifier.py        - Python Multi-Classifier"
+echo "   src/multi_classifier_service.py - Python Service Bridge"
+echo "   bert_training_data.csv         - Automatisch generierte Trainingsdaten"
+echo ""
+echo "📊 Das System wird automatisch Trainingsdaten sammeln wenn alle"
+echo "   drei Klassifikatoren übereinstimmen."
+
+# Test-Script erstellen
+cat > src/test.ts << 'EOF'
+import { EnhancedSystemRecognizer, Event } from './multi_classifier_integration';
+
+async function runTests() {
+    console.log('🧪 Starte System-Tests...\n');
+    
+    const system = new EnhancedSystemRecognizer();
+    
+    try {
+        await system.initialize();
+        
+        const testEvents: Event[] = [
+            {
+                id: "test1",
+                timestamp: Date.now() / 1000,
+                channel: "sensor",
+                severity: "warnung",
+                rawText: "Kabinentür schließt nicht ordnungsgemäß"
+            },
+            {
+                id: "test2", 
+                timestamp: Date.now() / 1000 + 1,
+                channel: "sensor",
+                severity: "bedrohung",
+                rawText: "Seilspannung kritisch - Notfall!"
+            },
+            {
+                id: "test3",
+                timestamp: Date.now() / 1000 + 2, 
+                channel: "sensor",
+                severity: "warnung",
+                rawText: "Getriebeöl läuft aus"
+            }
+        ];
+        
+        for (const event of testEvents) {
+            console.log(`\n🔬 Test Event: ${event.id}`);
+            await system.processEvent(event);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        const status = await system.getSystemStatus();
+        console.log('\n📋 Finaler Status:', status);
+        
+    } catch (error) {
+        console.error('❌ Test fehlgeschlagen:', error);
+    } finally {
+        system.destroy();
+    }
+}
+
+if (require.main === module) {
+    runTests().catch(console.error);
+}
+EOF
+
+echo "🧪 Test-Script erstellt: src/test.ts"
+echo "   Ausführen mit: npm run test"
