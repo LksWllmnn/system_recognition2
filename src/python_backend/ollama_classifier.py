@@ -90,25 +90,15 @@ class OllamaLLMClassifier(BaseClassifier):
             )
         
         try:
-            # Aufzugs-spezifischer LLM-Prompt
+            # Kürzerer, fokussierter Prompt für bessere Performance
             prompt = f"""
-Analysiere die folgende Aufzugs-Fehlermeldung und ordne sie einem Aufzugsteil zu.
+Klassifiziere diese Aufzugs-Meldung:
+"{event.message}"
 
-Aufzugsteile:
-- fahrkabine: Türen, Bedienelemente, Innenraum, Sensoren, Beleuchtung, Notruf
-- seil: Tragseile, Führungsseile, Seilrollen, Aufhängung, Seilüberwachung  
-- aufzugsgetriebe: Motor, Getriebe, Schmierung, Bremsen, Steuerung, Antrieb
+Kategorien: fahrkabine, seil, aufzugsgetriebe
 
-Nachricht: "{event.message}"
-
-Gib das Ergebnis als JSON zurück mit Scores zwischen 0.0 und 1.0:
-{{
-  "fahrkabine": 0.0,
-  "seil": 0.0,
-  "aufzugsgetriebe": 0.0
-}}
-
-Antwort nur JSON:
+JSON-Antwort:
+{{"fahrkabine": 0.0, "seil": 0.0, "aufzugsgetriebe": 0.0}}
 """
             
             # Asynce HTTP-Anfrage simulieren
@@ -123,10 +113,12 @@ Antwort nur JSON:
                         "stream": False,
                         "options": {
                             "temperature": 0.1,
-                            "num_predict": 150
+                            "num_predict": 100,  # Reduziert für kürzere Antworten
+                            "top_p": 0.9,
+                            "repeat_penalty": 1.1
                         }
                     },
-                    timeout=15
+                    timeout=12  # Reduziert von 15 auf 12 Sekunden
                 )
             )
             
@@ -134,15 +126,28 @@ Antwort nur JSON:
                 result = response.json()
                 llm_response = result.get('response', '').strip()
                 
-                # Parse JSON-Antwort
+                # Parse JSON-Antwort mit robustem Parser
                 try:
-                    # Entferne eventuell vorhandene Markdown-Formatierung
-                    if llm_response.startswith('```'):
-                        lines = llm_response.split('\n')
-                        json_lines = [line for line in lines if not line.startswith('```')]
-                        llm_response = '\n'.join(json_lines).strip()
+                    # Bereinige die Antwort
+                    clean_response = llm_response.strip()
                     
-                    categories = json.loads(llm_response)
+                    # Entferne Markdown-Formatierung
+                    if clean_response.startswith('```'):
+                        lines = clean_response.split('\n')
+                        json_lines = [line for line in lines if not line.startswith('```') and line.strip()]
+                        clean_response = '\n'.join(json_lines).strip()
+                    
+                    # Suche nach JSON-Pattern im Text
+                    import re
+                    json_pattern = r'\{[^}]*"fahrkabine"[^}]*"seil"[^}]*"aufzugsgetriebe"[^}]*\}'
+                    json_match = re.search(json_pattern, clean_response)
+                    
+                    if json_match:
+                        json_text = json_match.group(0)
+                        categories = json.loads(json_text)
+                    else:
+                        # Versuche direktes JSON-Parsing
+                        categories = json.loads(clean_response)
                     
                     if isinstance(categories, dict):
                         # Normalisiere Scores und stelle sicher, dass alle Kategorien vorhanden sind

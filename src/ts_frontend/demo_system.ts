@@ -46,7 +46,7 @@ export class DemoSystem {
                 ...config.server
             },
             client: {
-                timeout: 5000,
+                timeout: 20000,  // 20 Sekunden für LLM-Antworten
                 max_connection_attempts: 3,
                 ...config.client
             },
@@ -257,10 +257,15 @@ export class DemoSystem {
             try {
                 console.log(`[${i + 1}/${demoMessages.length}] "${msg.text}"`);
                 
+                // Progress-Indikator für langsamere Requests
+                const startTime = Date.now();
+                
                 const result = await this.client.classify(msg.text, msg.metadata);
                 
+                const duration = Date.now() - startTime;
+                
                 // Zeige Ergebnisse
-                this.displayClassificationResult(result, msg.expected_category);
+                this.displayClassificationResult(result, msg.expected_category, duration);
                 
                 // Kurze Pause zwischen Nachrichten
                 if (i < demoMessages.length - 1) {
@@ -304,7 +309,7 @@ export class DemoSystem {
         ];
     }
 
-    private displayClassificationResult(result: any, expectedCategory?: string): void {
+    private displayClassificationResult(result: any, expectedCategory?: string, clientDuration?: number): void {
         const classification = result.result;
         const scores = classification.combined_score;
         
@@ -321,7 +326,10 @@ export class DemoSystem {
             console.log(`  ${correct ? '✅' : '❌'} Erwartet: ${expectedCategory}`);
         }
         
-        console.log(`  ⏱️  Zeit: ${(classification.processing_time * 1000).toFixed(1)}ms`);
+        console.log(`  ⏱️  Server Zeit: ${(classification.processing_time * 1000).toFixed(1)}ms`);
+        if (clientDuration) {
+            console.log(`  📡 Client Zeit: ${clientDuration}ms`);
+        }
         console.log(`  🔧 Klassifikatoren: ${classification.classifier_count}`);
         
         // Zeige Top-3 Scores

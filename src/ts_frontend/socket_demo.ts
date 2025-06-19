@@ -55,7 +55,7 @@ async function main() {
             ...config.server
         },
         client: {
-            timeout: 5000,
+            timeout: 20000,  // 20 Sekunden für LLM-Antworten
             max_connection_attempts: 3,
             ...config.client
         },
@@ -68,7 +68,7 @@ async function main() {
     
     console.log('📋 Konfiguration:');
     console.log(`   🌐 Server: ${finalConfig.server.host}:${finalConfig.server.port}`);
-    console.log(`   ⏱️  Client Timeout: ${finalConfig.client.timeout}ms`);
+    console.log(`   ⏱️  Client Timeout: ${finalConfig.client.timeout}ms (erweitert für LLM)`);
     console.log(`   📝 Nachrichten: ${finalConfig.demo.message_count}`);
     console.log(`   🕐 Verzögerung: ${finalConfig.demo.delay_between_messages}ms`);
     console.log('');
