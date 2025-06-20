@@ -8,6 +8,14 @@ from simple_classifier import SimpleEmbeddingClassifier
 from rule_classifier import EnhancedRuleBasedClassifier
 from ollama_classifier import OllamaLLMClassifier
 
+# Import für erweiterte Funktionalität
+try:
+    from enhanced_multi_classifier import EnhancedMultiClassifierSystem
+    ENHANCED_AVAILABLE = True
+except ImportError:
+    ENHANCED_AVAILABLE = False
+    print("Enhanced Multi-Classifier nicht verfügbar - verwende Standard-System")
+
 logger = logging.getLogger(__name__)
 
 class MultiClassifierSystem:

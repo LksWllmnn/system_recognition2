@@ -14,6 +14,12 @@ interface ClientConfig {
     };
 }
 
+// Neue Interface für Channel Input
+interface ChannelInput {
+    channel: string;
+    data: any;
+}
+
 // Hilfsfunktion für Deep Partial
 type DeepPartial<T> = {
     [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
@@ -54,6 +60,32 @@ export class SocketClassifierClient extends EventEmitter {
             ...config
         } as ClientConfig;
     }
+
+    async classifyWithChannel(channel: string, data: any): Promise<any> {
+    return this.sendMessage({
+        type: 'channel_input',
+        channel: channel,
+        data: data
+    });
+}
+
+    // Erweitere die classify Methode für optionalen Channel
+    async classify(message: string, metadata: any = {}, channel?: string): Promise<any> {
+        if (channel) {
+            // Verwende Channel-Input wenn angegeben
+            return this.classifyWithChannel(channel, {
+                text: message,
+                metadata: metadata,
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        // Standard-Klassifikation
+        return this.sendMessage({
+            type: 'classify',
+            event: { message, metadata }
+        });
+}
 
     async connect(): Promise<void> {
         return new Promise((resolve, reject) => {
@@ -214,12 +246,12 @@ export class SocketClassifierClient extends EventEmitter {
         return this.sendMessage({ type: 'health_check' });
     }
 
-    async classify(message: string, metadata: any = {}): Promise<any> {
-        return this.sendMessage({
-            type: 'classify',
-            event: { message, metadata }
-        });
-    }
+    // async classify(message: string, metadata: any = {}): Promise<any> {
+    //     return this.sendMessage({
+    //         type: 'classify',
+    //         event: { message, metadata }
+    //     });
+    // }
 
     async getStats(): Promise<any> {
         return this.sendMessage({ type: 'stats' });

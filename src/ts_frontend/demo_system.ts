@@ -133,9 +133,10 @@ export class DemoSystem {
             
             this.pythonServer = spawn(pythonCmd, [
                 'socket_server.py',
+                '--enhanced',
                 '--host', this.config.server.host,
                 '--port', this.config.server.port.toString(),
-                '--log-level', 'INFO'
+                '--log-level', 'DEBUG',
             ], {
                 cwd: 'src/python_backend',
                 stdio: ['ignore', 'pipe', 'pipe']
@@ -290,22 +291,101 @@ export class DemoSystem {
     }
 
     private createDemoMessages(): DemoMessage[] {
+        const enhancedMode = process.env.ENHANCED_MODE === 'true';
+        
+        if (enhancedMode) {
+            // Enhanced Demo mit verschiedenen Kanälen
+            return [
+                { 
+                    text: "NOTFALL: Aufzug blockiert zwischen Stock 3 und 4", 
+                    expected_category: "fahrkabine",
+                    metadata: { channel: 'EmergencyButton', priority: 2 }
+                },
+                { 
+                    text: "Tür schließt sehr langsam im 2. Stock", 
+                    expected_category: "fahrkabine",
+                    metadata: { channel: 'SMS', from: '+49123456789' }
+                },
+                { 
+                    text: "Betreff: Dringend - Getriebegeräusche\nAufzug 1 macht laute Geräusche beim Anfahren", 
+                    expected_category: "aufzugsgetriebe",
+                    metadata: { channel: 'Email', priority: 1 }
+                },
+                { 
+                    text: "Äh hallo der Aufzug vibriert sehr stark bitte schnell kommen", 
+                    expected_category: "aufzugsgetriebe",
+                    metadata: { channel: 'Phone', duration: 45, confidence: 0.85 }
+                },
+                {
+                    text: "Seil quietscht beim Aufwärtsfahren merklich",
+                    expected_category: "seil",
+                    metadata: { channel: 'DirectInput', technician_id: 'TECH_023' }
+                },
+                {
+                    text: "WARNUNG: Mehrere Personen melden ruckartiges Anhalten",
+                    expected_category: "aufzugsgetriebe",
+                    metadata: { channel: 'Email', priority: 1, subject: 'Dringende Wartung erforderlich' }
+                },
+                {
+                    text: "Notbeleuchtung in Kabine 2 ausgefallen",
+                    expected_category: "fahrkabine",
+                    metadata: { channel: 'SMS', from: '+49172345678' }
+                },
+                {
+                    text: "Tragseil zeigt erste Verschleißspuren - planmäßige Kontrolle",
+                    expected_category: "seil",
+                    metadata: { channel: 'DirectInput', inspection_type: 'routine' }
+                },
+                {
+                    text: "KRITISCH: Aufzug stoppt zwischen Stockwerken, Personen eingeschlossen!",
+                    expected_category: "fahrkabine",
+                    metadata: { channel: 'EmergencyButton', priority: 2, location: 'Gebäude A' }
+                },
+                {
+                    text: "Motor überhitzt nach 10 Minuten Dauerbetrieb",
+                    expected_category: "aufzugsgetriebe",
+                    metadata: { channel: 'Phone', duration: 90, confidence: 0.92 }
+                },
+                {
+                    text: "Bedienfeld reagiert verzögert auf Eingaben",
+                    expected_category: "fahrkabine",
+                    metadata: { channel: 'Email', from: 'facility@company.com' }
+                },
+                {
+                    text: "Führungsseile müssen nachgespannt werden",
+                    expected_category: "seil",
+                    metadata: { channel: 'DirectInput', maintenance_required: true }
+                },
+                {
+                    text: "Schmierung des Getriebes durchgeführt - läuft wieder ruhig",
+                    expected_category: "aufzugsgetriebe",
+                    metadata: { channel: 'SMS', from: '+49173456789', maintenance_complete: true }
+                },
+                {
+                    text: "Innentüren schließen nicht korrekt, Sensor defekt?",
+                    expected_category: "fahrkabine",
+                    metadata: { channel: 'Phone', duration: 60, confidence: 0.88 }
+                },
+                {
+                    text: "Vierteljährliche Seilprüfung ohne Beanstandungen",
+                    expected_category: "seil",
+                    metadata: { channel: 'Email', inspection_report: true }
+                }
+            ];
+        }
+        
+        // Standard Demo Messages
         return [
             { text: "Leichte Verzögerung bei Türöffnung festgestellt", expected_category: "fahrkabine" },
-            { text: "Schmierölstand leicht reduziert – Wartung empfohlen", expected_category: "aufzugsgetriebe" },
-            { text: "Vibrationen leicht erhöht – Überprüfung empfohlen", expected_category: "aufzugsgetriebe" },
-            { text: "Temperatur im Schaltschrank leicht erhöht", expected_category: "aufzugsgetriebe" },
-            { text: "Plötzlicher Systemausfall – Notbetrieb aktiviert", expected_category: "aufzugsgetriebe" },
-            { text: "Getriebeölstand nahe Mindestwert", expected_category: "aufzugsgetriebe" },
-            { text: "Unregelmäßige Beschleunigung beim Startvorgang", expected_category: "aufzugsgetriebe" },
-            { text: "Tür schließt verzögert nach Gewichtserkennung", expected_category: "fahrkabine" },
-            { text: "Antrieb benötigt längere Initialisierung", expected_category: "aufzugsgetriebe" },
-            { text: "Kein Zugang zur Steuerungseinheit – manuelle Übersteuerung notwendig", expected_category: "aufzugsgetriebe" },
-            { text: "Tragseil zeigt Verschleißspuren am Aufhängepunkt", expected_category: "seil" },
-            { text: "Seilspannung unregelmäßig - Überprüfung der Seilführung nötig", expected_category: "seil" },
-            { text: "Bedienfeld reagiert verzögert auf Tasteneingaben", expected_category: "fahrkabine" },
-            { text: "Lichtschranke der Türsicherung defekt", expected_category: "fahrkabine" },
-            { text: "Motor läuft unrund - Lagerschaden vermutet", expected_category: "aufzugsgetriebe" }
+            { text: "Seil zeigt Abnutzungserscheinungen", expected_category: "seil" },
+            { text: "Ungewöhnliche Geräusche aus dem Getriebe", expected_category: "aufzugsgetriebe" },
+            { text: "Notbeleuchtung funktioniert nicht", expected_category: "fahrkabine" },
+            { text: "Tragseil muss ausgetauscht werden", expected_category: "seil" },
+            { text: "Motor läuft unrund", expected_category: "aufzugsgetriebe" },
+            { text: "Bedienfeld reagiert nicht", expected_category: "fahrkabine" },
+            { text: "Führungsseil locker", expected_category: "seil" },
+            { text: "Schmierung notwendig", expected_category: "aufzugsgetriebe" },
+            { text: "Innentüren schließen nicht richtig", expected_category: "fahrkabine" }
         ];
     }
 

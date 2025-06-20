@@ -24,10 +24,21 @@ from datetime import datetime
 from event import Event
 from multi_classifier_system import MultiClassifierSystem
 
+try:
+    from enhanced_multi_classifier import EnhancedMultiClassifierSystem
+    from input_channels.multi_channel_handler import MultiChannelInputHandler
+    from input_channels.input_message import InputMessage
+    from enhanced_logging import ClassificationLogger, VisualizationHelper
+    ENHANCED_MODE = True
+except ImportError:
+    from multi_classifier_system import MultiClassifierSystem
+    ENHANCED_MODE = False
+    print("Erweiterte Module nicht verfügbar - verwende Standard-Modus")
+
 class SocketClassifierServer:
     """Socket-basierter Klassifikationsserver"""
     
-    def __init__(self, host: str = 'localhost', port: int = 8888):
+    def __init__(self, host: str = 'localhost', port: int = 8888, use_enhanced: bool = True):
         self.host = host
         self.port = port
         self.socket = None
@@ -36,10 +47,24 @@ class SocketClassifierServer:
         self.client_counter = 0
         self.request_count = 0
         self.start_time = time.time()
-        
-        # Multi-Klassifikator System
-        self.classifier_system = MultiClassifierSystem()
-        
+
+        # Setup Logging zuerst!
+        self.logger = logging.getLogger(__name__)
+
+        # Wähle Klassifikator-System
+        if use_enhanced and ENHANCED_MODE:
+            self.classifier_system = EnhancedMultiClassifierSystem()
+            self.input_handler = MultiChannelInputHandler()
+            self.classification_logger = ClassificationLogger()
+            self.enhanced_mode = True
+            self.logger.info("Verwende Enhanced Multi-Classifier System")
+        else:
+            self.classifier_system = MultiClassifierSystem()
+            self.input_handler = None
+            self.classification_logger = None
+            self.enhanced_mode = False
+            self.logger.info("Verwende Standard Multi-Classifier System")
+
         # Setup Logging
         self.logger = logging.getLogger(__name__)
     
@@ -47,6 +72,11 @@ class SocketClassifierServer:
         """Initialisiert den Server"""
         self.logger.info("Initialisiere Multi-Classifier System...")
         await self.classifier_system.initialize()
+        # Initialisiere Input-Handler wenn im Enhanced Mode
+        if self.enhanced_mode and self.input_handler:
+            await self.input_handler.initialize_all_channels()
+            self.logger.info("Input-Kanäle initialisiert")
+
         self.logger.info("Multi-Classifier System bereit")
     
     def start_server(self):
@@ -124,9 +154,9 @@ class SocketClassifierServer:
         """Verarbeitet eine Client-Anfrage"""
         self.request_count += 1
         request_type = request.get('type', 'unknown')
-        
+
         self.logger.debug(f"Verarbeite {request_type} von {client_id}")
-        
+
         try:
             if request_type == 'health_check':
                 return {
@@ -135,48 +165,133 @@ class SocketClassifierServer:
                     'uptime_seconds': time.time() - self.start_time,
                     'total_requests': self.request_count,
                     'active_clients': self.client_counter,
+                    'enhanced_mode': self.enhanced_mode,
                     'request_id': request.get('request_id')
                 }
-            
+
             elif request_type == 'classify':
                 # Erstelle Event
                 event_data = request.get('event', {})
-                event = Event(
-                    timestamp=datetime.now(),
-                    message=event_data.get('message', ''),
-                    metadata=event_data.get('metadata', {})
-                )
-                
+
+                # Prüfe ob Channel-Information vorhanden
+                channel = event_data.get('channel')
+                if channel and self.enhanced_mode and self.input_handler:
+                    # Verarbeite durch Input-Handler
+                    input_message = await self.input_handler.process_channel_input(
+                        channel,
+                        event_data
+                    )
+
+                    if input_message:
+                        event = Event(
+                            timestamp=input_message.timestamp,
+                            message=input_message.processed_content,
+                            metadata={
+                                'channel': input_message.channel,
+                                'priority': input_message.priority,
+                                **input_message.metadata
+                            }
+                        )
+                    else:
+                        # Fallback zu direkter Verarbeitung
+                        event = Event(
+                            timestamp=datetime.now(),
+                            message=event_data.get('message', ''),
+                            metadata=event_data.get('metadata', {})
+                        )
+                else:
+                    # Standard Event-Erstellung
+                    event = Event(
+                        timestamp=datetime.now(),
+                        message=event_data.get('message', ''),
+                        metadata=event_data.get('metadata', {})
+                    )
+
                 # Klassifiziere
                 result = await self.classifier_system.classify_event(event)
-                
+
+                # Logge wenn Enhanced Logger verfügbar
+                if self.enhanced_mode and self.classification_logger:
+                    self.classification_logger.log_classification_result(result)
+
                 return {
                     'type': 'classification_response',
                     'result': result,
                     'request_id': request.get('request_id')
                 }
-            
+
             elif request_type == 'stats':
-                stats = self.classifier_system.get_system_stats()
+                if self.enhanced_mode and hasattr(self.classifier_system, 'get_enhanced_stats'):
+                    stats = self.classifier_system.get_enhanced_stats()
+                else:
+                    stats = self.classifier_system.get_system_stats()
+
                 stats.update({
                     'server_uptime': time.time() - self.start_time,
                     'total_requests': self.request_count,
-                    'active_clients': self.client_counter
+                    'active_clients': self.client_counter,
+                    'enhanced_mode': self.enhanced_mode
                 })
-                
+
+                # Füge Input-Handler Stats hinzu wenn verfügbar
+                if self.enhanced_mode and self.input_handler:
+                    stats['input_channels'] = self.input_handler.get_stats()
+
                 return {
                     'type': 'stats_response',
                     'stats': stats,
                     'request_id': request.get('request_id')
                 }
-            
+
+            elif request_type == 'channel_input' and self.enhanced_mode:
+                # Direkte Channel-Input Verarbeitung
+                channel = request.get('channel')
+                data = request.get('data')
+
+                if self.input_handler:
+                    input_message = await self.input_handler.process_channel_input(channel, data)
+
+                    if input_message:
+                        # Erstelle Event und klassifiziere
+                        event = Event(
+                            timestamp=input_message.timestamp,
+                            message=input_message.processed_content,
+                            metadata={
+                                'channel': input_message.channel,
+                                'priority': input_message.priority,
+                                **input_message.metadata
+                            }
+                        )
+
+                        result = await self.classifier_system.classify_event(event)
+
+                        if self.classification_logger:
+                            self.classification_logger.log_classification_result(result)
+
+                        return {
+                            'type': 'channel_response',
+                            'input_message': {
+                                'channel': input_message.channel,
+                                'processed_content': input_message.processed_content,
+                                'priority': input_message.priority
+                            },
+                            'classification': result,
+                            'request_id': request.get('request_id')
+                        }
+
+                return {
+                    'type': 'error',
+                    'message': 'Channel input processing failed',
+                    'request_id': request.get('request_id')
+                }
+
             else:
                 return {
                     'type': 'error',
                     'message': f'Unbekannter Request-Typ: {request_type}',
                     'request_id': request.get('request_id')
                 }
-                
+
         except Exception as e:
             self.logger.error(f"Fehler bei Request-Verarbeitung: {e}")
             return {
@@ -267,6 +382,7 @@ def main():
     parser.add_argument('--host', default='localhost', help='Server Host')
     parser.add_argument('--port', type=int, default=8888, help='Server Port')
     parser.add_argument('--log-level', default='INFO', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'])
+    parser.add_argument('--enhanced', action='store_true', help='Verwende Enhanced Mode mit Multi-Channel Support')
     
     args = parser.parse_args()
     
@@ -278,7 +394,7 @@ def main():
     )
     
     # Erstelle und starte Server
-    server = SocketClassifierServer(args.host, args.port)
+    server = SocketClassifierServer(args.host, args.port, use_enhanced=args.enhanced)
     
     try:
         # Initialisiere Server (async)
