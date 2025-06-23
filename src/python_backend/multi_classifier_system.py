@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from event import Event, ClassificationResult
 from simple_classifier import SimpleEmbeddingClassifier
 from rule_classifier import EnhancedRuleBasedClassifier
-from ollama_classifier import OllamaLLMClassifier
+from ollama_classifier import OllamaLangChainClassifier
 from tfidf_classifier import TfidfMLClassifier
 from zero_shot_classifier import ZeroShotClassifier
 
@@ -37,13 +37,13 @@ class MultiClassifierSystem:
         self.classifiers = [
             SimpleEmbeddingClassifier(),
             EnhancedRuleBasedClassifier(),
-            OllamaLLMClassifier()
-            #TfidfMLClassifier(training_data={
-            #                "Seil quietscht beim Aufwärtsfahren": "seil",
-             #               "Kabinentür klemmt beim Schließen": "fahrkabine",
-              #              "Motor überhitzt nach kurzer Laufzeit": "aufzugsgetriebe"
-               #             }),
-            #ZeroShotClassifier()
+            OllamaLangChainClassifier(),
+            TfidfMLClassifier(training_data={
+                            "Seil quietscht beim Aufwärtsfahren": "seil",
+                            "Kabinentür klemmt beim Schließen": "fahrkabine",
+                            "Motor überhitzt nach kurzer Laufzeit": "aufzugsgetriebe"
+                            }),
+            ZeroShotClassifier()
         ]
         
         # Initialisiere alle Klassifikatoren

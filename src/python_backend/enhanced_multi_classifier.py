@@ -11,7 +11,7 @@ from event import Event, ClassificationResult
 from base_classifier import BaseClassifier
 from simple_classifier import SimpleEmbeddingClassifier
 from rule_classifier import EnhancedRuleBasedClassifier
-from ollama_classifier import OllamaLLMClassifier
+from ollama_classifier import OllamaLangChainClassifier
 from tfidf_classifier import TfidfMLClassifier
 from zero_shot_classifier import ZeroShotClassifier
 
@@ -83,7 +83,7 @@ class EnhancedMultiClassifierSystem:
         self.classifiers = [
             SimpleEmbeddingClassifier(),
             EnhancedRuleBasedClassifier(),
-            OllamaLLMClassifier(),
+            OllamaLangChainClassifier(),
             TfidfMLClassifier(training_data={
                             "Seil quietscht beim Aufwärtsfahren": "seil",
                             "Kabinentür klemmt beim Schließen": "fahrkabine",
