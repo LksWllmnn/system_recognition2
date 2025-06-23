@@ -7,6 +7,8 @@ from event import Event, ClassificationResult
 from simple_classifier import SimpleEmbeddingClassifier
 from rule_classifier import EnhancedRuleBasedClassifier
 from ollama_classifier import OllamaLLMClassifier
+from tfidf_classifier import TfidfMLClassifier
+from zero_shot_classifier import ZeroShotClassifier
 
 # Import für erweiterte Funktionalität
 try:
@@ -36,6 +38,12 @@ class MultiClassifierSystem:
             SimpleEmbeddingClassifier(),
             EnhancedRuleBasedClassifier(),
             OllamaLLMClassifier()
+            #TfidfMLClassifier(training_data={
+            #                "Seil quietscht beim Aufwärtsfahren": "seil",
+             #               "Kabinentür klemmt beim Schließen": "fahrkabine",
+              #              "Motor überhitzt nach kurzer Laufzeit": "aufzugsgetriebe"
+               #             }),
+            #ZeroShotClassifier()
         ]
         
         # Initialisiere alle Klassifikatoren

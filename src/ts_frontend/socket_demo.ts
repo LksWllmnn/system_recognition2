@@ -51,7 +51,7 @@ async function main() {
         server: {
             host: 'localhost',
             port: 8888,
-            startup_timeout: 15000,
+            startup_timeout: 450000,
             ...config.server
         },
         client: {

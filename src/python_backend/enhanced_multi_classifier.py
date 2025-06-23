@@ -9,6 +9,11 @@ from datetime import datetime, timedelta
 
 from event import Event, ClassificationResult
 from base_classifier import BaseClassifier
+from simple_classifier import SimpleEmbeddingClassifier
+from rule_classifier import EnhancedRuleBasedClassifier
+from ollama_classifier import OllamaLLMClassifier
+from tfidf_classifier import TfidfMLClassifier
+from zero_shot_classifier import ZeroShotClassifier
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +74,46 @@ class EnhancedMultiClassifierSystem:
         # Performance Tracking
         self.classification_history = []
         self.mode_changes = []
+    
+    async def initialize(self):
+        """Initialisiert alle Klassifikatoren"""
+        logger.info("Initialisiere Async Multi-Klassifikator-System...")
+        
+        # Erstelle Klassifikatoren
+        self.classifiers = [
+            SimpleEmbeddingClassifier(),
+            EnhancedRuleBasedClassifier(),
+            OllamaLLMClassifier(),
+            TfidfMLClassifier(training_data={
+                            "Seil quietscht beim Aufwärtsfahren": "seil",
+                            "Kabinentür klemmt beim Schließen": "fahrkabine",
+                            "Motor überhitzt nach kurzer Laufzeit": "aufzugsgetriebe"
+                            }),
+            ZeroShotClassifier()
+        ]
+        
+        # Initialisiere alle Klassifikatoren
+        initialization_tasks = []
+        for classifier in self.classifiers:
+            task = asyncio.create_task(classifier.initialize())
+            initialization_tasks.append(task)
+        
+        # Warte auf Initialisierung
+        results = await asyncio.gather(*initialization_tasks, return_exceptions=True)
+        
+        # Prüfe Ergebnisse
+        active_classifiers = []
+        for i, (classifier, result) in enumerate(zip(self.classifiers, results)):
+            if isinstance(result, Exception):
+                logger.warning(f"Klassifikator {classifier.name} Initialisierung fehlgeschlagen: {result}")
+            elif result:
+                active_classifiers.append(classifier)
+                logger.info(f"✅ {classifier.name} erfolgreich initialisiert")
+            else:
+                logger.warning(f"Klassifikator {classifier.name} nicht verfügbar")
+        
+        self.classifiers = active_classifiers
+        logger.info("Async Multi-Klassifikator-System bereit")
     
     async def classify_event(self, event: Event) -> Dict[str, Any]:
         """Klassifiziert Event mit Fokus-Modus-Logik"""
@@ -315,3 +360,18 @@ class EnhancedMultiClassifierSystem:
         }
         
         return base_stats
+    def get_system_stats(self) -> Dict[str, Any]:
+        """Gibt System-Statistiken zurück"""
+        classifier_stats = {}
+        for classifier in self.classifiers:
+            classifier_stats[classifier.name] = classifier.get_stats()
+        
+        avg_time = self.total_time / max(1, self.total_events)
+        
+        return {
+            'total_events': self.total_events,
+            'total_time': 10,
+            'average_time': avg_time,
+            'active_classifiers': len(self.classifiers),
+            'classifier_stats': classifier_stats
+        }

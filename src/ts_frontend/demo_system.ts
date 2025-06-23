@@ -42,7 +42,7 @@ export class DemoSystem {
             server: {
                 host: 'localhost',
                 port: 8888,
-                startup_timeout: 15000,
+                startup_timeout: 4500000,
                 ...config.server
             },
             client: {
