@@ -241,54 +241,67 @@ export class DemoSystem {
     }
 
     private async runClassificationDemo(): Promise<void> {
-        console.log('🎯 Starte Klassifikations-Demo...');
+    console.log('🎯 Starte Klassifikations-Demo...');
+    
+    if (!this.client) {
+        throw new Error('Client nicht verbunden');
+    }
+
+    // Erstelle Demo-Nachrichten
+    const demoMessages = this.createDemoMessages();
+    
+    console.log(`📝 Klassifiziere ${demoMessages.length} Demo-Nachrichten...\n`);
+
+    for (let i = 0; i < demoMessages.length; i++) {
+        const msg = demoMessages[i];
         
-        if (!this.client) {
-            throw new Error('Client nicht verbunden');
-        }
-
-        // Erstelle Demo-Nachrichten
-        const demoMessages = this.createDemoMessages();
-        
-        console.log(`📝 Klassifiziere ${demoMessages.length} Demo-Nachrichten...\n`);
-
-        for (let i = 0; i < demoMessages.length; i++) {
-            const msg = demoMessages[i];
-            
-            try {
-                console.log(`[${i + 1}/${demoMessages.length}] "${msg.text}"`);
-                
-                // Progress-Indikator für langsamere Requests
-                const startTime = Date.now();
-                
-                const result = await this.client.classify(msg.text, msg.metadata);
-                
-                const duration = Date.now() - startTime;
-                
-                // Zeige Ergebnisse
-                this.displayClassificationResult(result, msg.expected_category, duration);
-                
-                // Kurze Pause zwischen Nachrichten
-                if (i < demoMessages.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, this.config.demo.delay_between_messages));
-                }
-                
-            } catch (error) {
-                console.error(`❌ Fehler bei Nachricht ${i + 1}:`, error);
-            }
-        }
-
-        // Zeige finale Statistiken
         try {
-            const stats = await this.client.getStats();
-            console.log('\n📊 FINALE STATISTIKEN:');
-            console.log(`📈 Verarbeitete Events: ${stats.stats.total_events}`);
-            console.log(`⏱️  Durchschnittliche Zeit: ${stats.stats.average_time?.toFixed(3)}s`);
-            console.log(`🔧 Aktive Klassifikatoren: ${stats.stats.active_classifiers}`);
+            console.log(`[${i + 1}/${demoMessages.length}] "${msg.text}"`);
+            
+            const startTime = Date.now();
+            
+            // Füge expected_category zu metadata hinzu für Ground Truth
+            const metadata = {
+                ...msg.metadata,
+                expected_category: msg.expected_category  // NEU!
+            };
+            
+            const result = await this.client.classify(msg.text, metadata);
+            
+            const duration = Date.now() - startTime;
+            
+            // Zeige Ergebnisse
+            this.displayClassificationResult(result, msg.expected_category, duration);
+            
+            // Kurze Pause zwischen Nachrichten
+            if (i < demoMessages.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, this.config.demo.delay_between_messages));
+            }
+            
         } catch (error) {
-            console.warn('Statistiken konnten nicht abgerufen werden:', error);
+            console.error(`❌ Fehler bei Nachricht ${i + 1}:`, error);
         }
     }
+
+    // Zeige finale Statistiken und Performance-Report
+    try {
+        const stats = await this.client.getStats();
+        console.log('\n📊 FINALE STATISTIKEN:');
+        console.log(`📈 Verarbeitete Events: ${stats.stats.total_events}`);
+        console.log(`⏱️  Durchschnittliche Zeit: ${stats.stats.average_time?.toFixed(3)}s`);
+        console.log(`🔧 Aktive Klassifikatoren: ${stats.stats.active_classifiers}`);
+        
+        // Performance-Report ausgeben wenn vorhanden
+        if (stats.stats.performance_report) {
+            console.log('\n' + '='.repeat(80));
+            console.log('PERFORMANCE-ANALYSE DER KLASSIFIKATOREN:');
+            console.log('='.repeat(80));
+            console.log(stats.stats.performance_report);
+        }
+    } catch (error) {
+        console.warn('Statistiken konnten nicht abgerufen werden:', error);
+    }
+}
 
     private createDemoMessages(): DemoMessage[] {
         const enhancedMode = process.env.ENHANCED_MODE === 'true';

@@ -57,6 +57,7 @@ class SocketClassifierServer:
             self.input_handler = MultiChannelInputHandler()
             self.classification_logger = ClassificationLogger()
             self.enhanced_mode = True
+            self.classification_logger.enable_performance_tracking()
             self.logger.info("Verwende Enhanced Multi-Classifier System")
         else:
             self.classifier_system = MultiClassifierSystem()
@@ -172,7 +173,11 @@ class SocketClassifierServer:
             elif request_type == 'classify':
                 # Erstelle Event
                 event_data = request.get('event', {})
-
+                
+                # Extrahiere Ground Truth aus Metadata wenn vorhanden
+                metadata = event_data.get('metadata', {})
+                true_category = metadata.pop('expected_category', None)  # NEU!
+            
                 # Prüfe ob Channel-Information vorhanden
                 channel = event_data.get('channel')
                 if channel and self.enhanced_mode and self.input_handler:
@@ -181,7 +186,7 @@ class SocketClassifierServer:
                         channel,
                         event_data
                     )
-
+            
                     if input_message:
                         event = Event(
                             timestamp=input_message.timestamp,
@@ -197,23 +202,23 @@ class SocketClassifierServer:
                         event = Event(
                             timestamp=datetime.now(),
                             message=event_data.get('message', ''),
-                            metadata=event_data.get('metadata', {})
+                            metadata=metadata
                         )
                 else:
                     # Standard Event-Erstellung
                     event = Event(
                         timestamp=datetime.now(),
                         message=event_data.get('message', ''),
-                        metadata=event_data.get('metadata', {})
+                        metadata=metadata
                     )
-
-                # Klassifiziere
-                result = await self.classifier_system.classify_event(event)
-
+            
+                # Klassifiziere mit Ground Truth
+                result = await self.classifier_system.classify_event(event, true_category=true_category)  # NEU!
+            
                 # Logge wenn Enhanced Logger verfügbar
                 if self.enhanced_mode and self.classification_logger:
                     self.classification_logger.log_classification_result(result)
-
+            
                 return {
                     'type': 'classification_response',
                     'result': result,
@@ -236,6 +241,9 @@ class SocketClassifierServer:
                 # Füge Input-Handler Stats hinzu wenn verfügbar
                 if self.enhanced_mode and self.input_handler:
                     stats['input_channels'] = self.input_handler.get_stats()
+                # Füge Performance-Report zu stats hinzu:
+                if self.enhanced_mode and self.classification_logger:
+                    stats['performance_report'] = self.classification_logger.generate_performance_report()
 
                 return {
                     'type': 'stats_response',
