@@ -15,6 +15,7 @@ from rule_classifier import EnhancedRuleBasedClassifier
 from ollama_classifier import OllamaLangChainClassifier
 from tfidf_classifier import TfidfMLClassifier
 from zero_shot_classifier import ZeroShotClassifier
+from further_classifiers import BagOfWordsNaiveBayesClassifier, DebugKeywordDensityClassifier, KeywordDensityClassifier, DebugNGramPatternClassifier, NGramPatternClassifier, RandomForestTextClassifier, EnsembleMetaClassifier, VotingEnsembleClassifier, OptimizedKeywordDensityClassifier, OptimizedNGramPatternClassifier
 
 logger = logging.getLogger(__name__)
 
@@ -159,16 +160,103 @@ class EnhancedMultiClassifierSystem:
     async def initialize(self):
         """Initialisiert alle Klassifikatoren"""
         logger.info("Initialisiere Async Multi-Klassifikator-System...")
+
+        training_data = {
+            # SEIL (20 Beispiele)
+    "Seil quietscht beim Aufwärtsfahren": "seil",
+    "Tragseil zeigt erste Verschleißerscheinungen": "seil",
+    "Führungsseil hat einen kleinen Riss": "seil",
+    "Hubseil ist überdehnt und muss getauscht werden": "seil",
+    "Kabel an der Seilrolle ausgefranst": "seil",
+    "Spannung im Tragseil zu niedrig": "seil",
+    "Seilscheibe läuft unrund": "seil",
+    "Umlenkrolle macht Geräusche": "seil",
+    "Seilführung blockiert manchmal": "seil",
+    "Aufhängung des Seils gelockert": "seil",
+    "Befestigung am Seil überprüfen": "seil",
+    "Seilüberwachung meldet Fehler": "seil",
+    "Drahtbruch im Tragseil festgestellt": "seil",
+    "Seile müssen komplett erneuert werden": "seil",
+    "Verschleiß an mehreren Seilsträngen": "seil",
+    "Dehnung des Hubseils überschritten": "seil",
+    "Kabel zur Seilrolle defekt": "seil",
+    "Seilspannung schwankt während der Fahrt": "seil",
+    "Riss in der Seilummantelung entdeckt": "seil",
+    "Bruch einzelner Drähte im Seil": "seil",
+    
+    # FAHRKABINE (20 Beispiele)
+    "Kabinentür klemmt beim Schließen": "fahrkabine",
+    "Türöffnung verzögert sich stark": "fahrkabine",
+    "Türschließung funktioniert nicht ordnungsgemäß": "fahrkabine",
+    "Kabine bleibt zwischen den Etagen stehen": "fahrkabine",
+    "Beleuchtung in der Fahrkabine flackert": "fahrkabine",
+    "Display zeigt falsche Etagenanzeige": "fahrkabine",
+    "Knopf für 3. Stock reagiert nicht": "fahrkabine",
+    "Taste im Bedienfeld klemmt": "fahrkabine",
+    "Bedienfeld komplett ausgefallen": "fahrkabine",
+    "Lüftung in der Kabine zu schwach": "fahrkabine",
+    "Ventilation macht laute Geräusche": "fahrkabine",
+    "Innenraum der Kabine zu dunkel": "fahrkabine",
+    "Boden der Fahrkabine wackelt": "fahrkabine",
+    "Wand in der Kabine beschädigt": "fahrkabine",
+    "Deckenbeleuchtung defekt": "fahrkabine",
+    "Türsensor erkennt Hindernisse nicht": "fahrkabine",
+    "Lichtschranke an der Tür ausgefallen": "fahrkabine",
+    "Notruf funktioniert nicht": "fahrkabine",
+    "Notsprechanlage ohne Verbindung": "fahrkabine",
+    "Panel zeigt Fehlermeldung an": "fahrkabine",
+    
+    # AUFZUGSGETRIEBE (20 Beispiele)
+    "Motor überhitzt nach kurzer Laufzeit": "aufzugsgetriebe",
+    "Getriebe macht ungewöhnliche Geräusche": "aufzugsgetriebe",
+    "Antrieb startet verzögert": "aufzugsgetriebe",
+    "Antriebsmotor läuft unruhig": "aufzugsgetriebe",
+    "Getriebemotor vibriert stark": "aufzugsgetriebe",
+    "Ölstand im Getriebe zu niedrig": "aufzugsgetriebe",
+    "Schmierung des Motors unzureichend": "aufzugsgetriebe",
+    "Schmierstoff muss gewechselt werden": "aufzugsgetriebe",
+    "Schmierölstand kritisch niedrig": "aufzugsgetriebe",
+    "Getriebeöl verschmutzt": "aufzugsgetriebe",
+    "Vibration beim Anfahren spürbar": "aufzugsgetriebe",
+    "Lager im Getriebe defekt": "aufzugsgetriebe",
+    "Welle zeigt Verschleißspuren": "aufzugsgetriebe",
+    "Zahnrad im Getriebe abgenutzt": "aufzugsgetriebe",
+    "Kupplung rutscht durch": "aufzugsgetriebe",
+    "Bremse greift nicht richtig": "aufzugsgetriebe",
+    "Bremsung zu schwach eingestellt": "aufzugsgetriebe",
+    "Drehzahl des Motors schwankt": "aufzugsgetriebe",
+    "Geschwindigkeit nicht konstant": "aufzugsgetriebe",
+    "Drehmoment zu gering": "aufzugsgetriebe",
+    "Temperatur im Motorraum zu hoch": "aufzugsgetriebe",
+    "Überhitzung der Antriebseinheit": "aufzugsgetriebe",
+    "Kühlung des Motors unzureichend": "aufzugsgetriebe",
+    "Steuerung reagiert nicht auf Befehle": "aufzugsgetriebe",
+    "Steuerungseinheit zeigt Fehlercode": "aufzugsgetriebe"
+        }
         
         # Erstelle Klassifikatoren
         self.classifiers = [
             SimpleEmbeddingClassifier(),
             EnhancedRuleBasedClassifier(),
-            TfidfMLClassifier(training_data={
-                "Seil quietscht beim Aufwärtsfahren": "seil",
-                "Kabinentür klemmt beim Schließen": "fahrkabine",
-                "Motor überhitzt nach kurzer Laufzeit": "aufzugsgetriebe"
-            }),
+            TfidfMLClassifier(training_data=training_data),
+            BagOfWordsNaiveBayesClassifier(training_data=training_data),
+            OptimizedKeywordDensityClassifier(training_data=training_data),
+            OptimizedNGramPatternClassifier(training_data=training_data),
+            RandomForestTextClassifier(training_data=training_data), 
+            EnsembleMetaClassifier(training_data=training_data, 
+                                   classifiers={
+                                    SimpleEmbeddingClassifier(),
+                                    VotingEnsembleClassifier(training_data=training_data),
+                                    #OllamaLangChainClassifier(),
+                                    BagOfWordsNaiveBayesClassifier(training_data=training_data),
+                                    TfidfMLClassifier(training_data=training_data),
+                                    RandomForestTextClassifier(training_data=training_data),
+                                    OptimizedKeywordDensityClassifier(training_data=training_data),
+                                    OptimizedNGramPatternClassifier(training_data=training_data),
+                                    EnhancedRuleBasedClassifier()
+                                   }), 
+            VotingEnsembleClassifier(training_data=training_data),
+            OllamaLangChainClassifier(),
             ZeroShotClassifier()
         ]
         

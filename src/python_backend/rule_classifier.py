@@ -16,44 +16,76 @@ class EnhancedRuleBasedClassifier(BaseClassifier):
         self._setup_rules()
     
     def _setup_rules(self):
-        """Definiert Aufzugs-Klassifikationsregeln"""
+        """Definiert erweiterte Aufzugs-Klassifikationsregeln"""
         self.rules = [
-            # FAHRKABINE - Tür-bezogene Probleme
-            (r'\b(tür[a-zA-ZäöüÄÖÜß]*|türe[a-zA-ZäöüÄÖÜß]*)\b', 'fahrkabine', 0.9),
-            (r'\b(öffn|schließ|klemm)[a-zA-ZäöüÄÖÜß]*', 'fahrkabine', 0.8),
-            
-            # FAHRKABINE - Bedienelemente und Innenraum
-            (r'\b(knopf|taste|bedien|panel|display|beleuchtung)\b', 'fahrkabine', 0.8),
-            (r'\b(kabine|fahrkabine|innenraum|lüftung)\b', 'fahrkabine', 0.9),
-            (r'\b(sensor|lichtschranke|notruf|notsprech)\b', 'fahrkabine', 0.7),
-            
-            # SEIL - Seil und Kabel
-            (r'\b(seil|tragseil|führungsseil|hubseil)\b', 'seil', 0.95),
-            (r'\b(kabel|draht|spannung)\b', 'seil', 0.7),
-            (r'\b(seil[a-zA-ZäöüÄÖÜß]*rolle|umlenkrolle|seilscheibe)\b', 'seil', 0.9),
-            (r'\b(aufhäng|befestig|seilüberwach)\w*', 'seil', 0.8),
-            (r'\b(bruch|riss|verschleiß|dehnung).*seil\b', 'seil', 0.95),
-            
-            # AUFZUGSGETRIEBE - Motor und Antrieb
-            (r'\b(getriebe|motor|antrieb|getriebemotor)\b', 'aufzugsgetriebe', 0.95),
-            (r'\b(schmier[a-zA-ZäöüÄÖÜß]*|öl[a-zA-ZäöüÄÖÜß]*)\b', 'aufzugsgetriebe', 0.9),
-            (r'\b(vibrat|schwing|erschüttert)\w*', 'aufzugsgetriebe', 0.8),
-            
-            # AUFZUGSGETRIEBE - Mechanische Komponenten
-            (r'\b(lager|welle|zahnrad|kupplung|bremse)\b', 'aufzugsgetriebe', 0.85),
-            (r'\b(drehzahl|geschwindigkeit|drehmoment)\b', 'aufzugsgetriebe', 0.8),
-            (r'\b(temperatur|überhitz|kühl)\w*', 'aufzugsgetriebe', 0.7),
-            (r'\b(steuer[a-zA-ZäöüÄÖÜß]*einheit|kontrolle)\b', 'aufzugsgetriebe', 0.8),
-            
-            # SPEZIELLE KOMBINATIONEN
-            (r'\btür.*verzög\w*', 'fahrkabine', 0.95),
-            (r'\bgewicht.*erken\w*', 'fahrkabine', 0.9),
-            (r'\binitialisier.*antrieb', 'aufzugsgetriebe', 0.9),
-            (r'\bölstand.*\b(reduziert|niedrig|minimal|nahe)\b', 'aufzugsgetriebe', 0.95),
-            
-            # PROBLEM-INDIKATOREN (verstärken bestehende Kategorien)
-            (r'\b(plötzlich|notfall|ausfall|stillstand)\b', None, 0.2),  # Verstärkt andere Scores
-            (r'\b(wartung|überprüf|inspektion)\b', None, 0.1),
+        # FAHRKABINE - Tür-bezogene Probleme
+        (r'\b(tür[a-zA-ZäöüÄÖÜß]*|türe[a-zA-ZäöüÄÖÜß]*)\b', 'fahrkabine', 0.9),
+        (r'\btüröffnung\b', 'fahrkabine', 0.9),
+        (r'\btürschließung\b', 'fahrkabine', 0.9),
+        (r'\b(öffn|schließ|klemm)[a-zA-ZäöüÄÖÜß]*', 'fahrkabine', 0.8),
+        
+        # FAHRKABINE - Sensoren und Sicherheit
+        (r'\btürsensor\b', 'fahrkabine', 0.9),
+        (r'\b(sensor|lichtschranke)\b', 'fahrkabine', 0.7),
+        (r'\b(notruf|notsprech[a-zA-ZäöüÄÖÜß]*)\b', 'fahrkabine', 0.8),
+        (r'\bnotsprechanlage\b', 'fahrkabine', 0.9),
+        
+        # FAHRKABINE - Bedienelemente und Innenraum
+        (r'\b(knopf|taste|bedien[a-zA-ZäöüÄÖÜß]*|panel|display)\b', 'fahrkabine', 0.8),
+        (r'\bbedienfeld\b', 'fahrkabine', 0.9),
+        (r'\b(kabine|fahrkabine|innenraum)\b', 'fahrkabine', 0.9),
+        (r'\b(beleuchtung|lüftung|ventilation)\b', 'fahrkabine', 0.8),
+        (r'\b(boden|wand|decke)\b', 'fahrkabine', 0.7),
+        
+        # SEIL - Grundlegende Seiltypen
+        (r'\b(seil|seile)\b', 'seil', 0.95),
+        (r'\b(tragseil|führungsseil|hubseil)\b', 'seil', 0.95),
+        (r'\b(kabel|draht)\b', 'seil', 0.7),
+        (r'\bseilführung\b', 'seil', 0.9),
+        
+        # SEIL - Seilkomponenten und Mechanik
+        (r'\b(seil[a-zA-ZäöüÄÖÜß]*rolle|umlenkrolle|seilscheibe)\b', 'seil', 0.9),
+        (r'\b(aufhäng[a-zA-ZäöüÄÖÜß]*|befestig[a-zA-ZäöüÄÖÜß]*)\b', 'seil', 0.8),
+        (r'\bseilüberwachung\b', 'seil', 0.9),
+        (r'\bspannung\b', 'seil', 0.8),
+        
+        # SEIL - Verschleiß und Schäden
+        (r'\b(bruch|riss|verschleiß|dehnung)\b', 'seil', 0.9),
+        (r'\b(bruch|riss|verschleiß|dehnung).*seil\b', 'seil', 0.95),
+        
+        # AUFZUGSGETRIEBE - Motor und Antrieb
+        (r'\b(getriebe|motor|antrieb)\b', 'aufzugsgetriebe', 0.95),
+        (r'\b(antriebsmotor|getriebemotor)\b', 'aufzugsgetriebe', 0.95),
+        
+        # AUFZUGSGETRIEBE - Schmierung und Öl
+        (r'\b(öl|schmier[a-zA-ZäöüÄÖÜß]*)\b', 'aufzugsgetriebe', 0.9),
+        (r'\b(schmierstoff|schmierölstand|getriebeöl)\b', 'aufzugsgetriebe', 0.95),
+        
+        # AUFZUGSGETRIEBE - Mechanische Komponenten
+        (r'\b(lager|welle|zahnrad|kupplung)\b', 'aufzugsgetriebe', 0.85),
+        (r'\b(bremse|bremsung)\b', 'aufzugsgetriebe', 0.85),
+        (r'\b(drehzahl|geschwindigkeit|drehmoment)\b', 'aufzugsgetriebe', 0.8),
+        
+        # AUFZUGSGETRIEBE - Temperatur und Kühlung
+        (r'\b(temperatur|überhitz[a-zA-ZäöüÄÖÜß]*|kühl[a-zA-ZäöüÄÖÜß]*)\b', 'aufzugsgetriebe', 0.7),
+        (r'\bkühlung\b', 'aufzugsgetriebe', 0.8),
+        
+        # AUFZUGSGETRIEBE - Steuerung und Kontrolle
+        (r'\b(steuer[a-zA-ZäöüÄÖÜß]*|kontrolle)\b', 'aufzugsgetriebe', 0.8),
+        (r'\bsteuerungseinheit\b', 'aufzugsgetriebe', 0.9),
+        
+        # AUFZUGSGETRIEBE - Vibration und Bewegung
+        (r'\b(vibrat[a-zA-ZäöüÄÖÜß]*|schwing[a-zA-ZäöüÄÖÜß]*|erschüttert[a-zA-ZäöüÄÖÜß]*)\b', 'aufzugsgetriebe', 0.8),
+        
+        # SPEZIELLE KOMBINATIONEN (aus ursprünglichen Regeln)
+        (r'\btür.*verzög\w*', 'fahrkabine', 0.95),
+        (r'\bgewicht.*erken\w*', 'fahrkabine', 0.9),
+        (r'\binitialisier.*antrieb', 'aufzugsgetriebe', 0.9),
+        (r'\bölstand.*\b(reduziert|niedrig|minimal|nahe)\b', 'aufzugsgetriebe', 0.95),
+        
+        # PROBLEM-INDIKATOREN (verstärken bestehende Kategorien)
+        (r'\b(plötzlich|notfall|ausfall|stillstand)\b', None, 0.2),  # Verstärkt andere Scores
+        (r'\b(wartung|überprüf|inspektion)\b', None, 0.1),
         ]
     
     async def initialize(self) -> bool:
